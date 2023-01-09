@@ -18,14 +18,14 @@ Yped2 = [3.74, 3.44, 3.11, 2.78, 2.43, 2.07, 1.7, 1.32, 0.94, 0.48, 0.01, -0.5, 
 
 
 eps = 0.2
-T = 10
-Delta = 1/10
+T = 20
+Delta = 1/15
 L = 1
 xref = 2.5
-yref = -7.5
+yref = -9
 
 x_state = [0.5]*(T-1)
-y_state = [-2.5]*(T-1)
+y_state = [3]*(T-1)
 
 opti = casadi.Opti()
 x = opti.variable(T)
@@ -38,11 +38,11 @@ delta = opti.variable(T)
 
 opti.set_initial(x[0], x_state[0])
 opti.set_initial(y[0], y_state[0])
-opti.set_initial(V[0], 2.5)
-opti.set_initial(theta[0],-pi/8)
+opti.set_initial(V[0], -1)
+opti.set_initial(theta[0],-pi/7)
 
 p_opts = {"expand":True}
-s_opts = {"max_iter": 4000}
+s_opts = {"max_iter": 5000}
 opti.solver('ipopt', p_opts, s_opts)
 
 obj = 0
@@ -56,10 +56,10 @@ for i in range(1, T):
     opti.subject_to(V[i] == V[i-1] + Delta*(uv[i-1]))
     
 for i in range(T):
-    obj += delta[i-1]**2 + uv[i-1]**2
+    obj += delta[i-1]**2 + 0.5*uv[i-1]**2
     opti.minimize(obj)
-    opti.subject_to(sqrt((x[i]-Xped1[i+T])**2+(y[i]-Yped1[i+T])**2) >= ConfPredRadius[i]+eps)
-    opti.subject_to(sqrt((x[i]-Xped2[i+T])**2+(y[i]-Yped2[i+T])**2) >= ConfPredRadius[i]+eps)
+    opti.subject_to(sqrt((x[i]-Xped1[i])**2+(y[i]-Yped1[i])**2) >= 0.5*(ConfPredRadius[i]+eps))
+    #opti.subject_to(sqrt((x[i]-Xped2[i])**2+(y[i]-Yped2[i])**2) >= 0.5*(ConfPredRadius[i]+eps))
     
 opti.subject_to(x[0]-x_state[0] == 0)
 opti.subject_to(y[0]-y_state[0] == 0)
@@ -75,36 +75,49 @@ ys = sol.value(y)
 vs = sol.value(V)
 thetas = sol.value(theta)
 
-Data = np.zeros((10,11))
+Data = np.zeros((19,14))
 
-for i in range(10):
-    Data[i,0] = i
-    Data[i,1] = x_state[0]
-    Data[i,2] = y_state[0]
-    Data[i,3] = vs[0]
-    Data[i,4] = thetas[0]
-    Data[i,5] = uv_solved[i]
-    Data[i,6] = delta_solved[i]
-    Data[i,7] = xs[i]
-    Data[i,8] = ys[i]
-    Data[i,9] = vs[i]
-    Data[i,10] = thetas[i]
-
-time = [0,1,2,3,4,5,6,7,8,9]
-plt.subplot(2, 1, 1)
+time = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+plt.subplot(3, 1, 1)
 plt.plot(time, uv_solved, 'o-')
 plt.title('Control Scheme')
 plt.ylabel('Acceleration')
 
-plt.subplot(2, 1, 2)
+plt.subplot(3, 1, 2)
 plt.plot(time, delta_solved, '.-')
 plt.xlabel('time (s)')
 plt.ylabel('Steering angle')
 
+plt.subplot(3, 1, 3)
+plt.plot(xs, ys, '.-')
+plt.plot(Xped1,Yped1, '.-')
+plt.xlabel('x')
+plt.ylabel('y')
+
 plt.show()
-#import pandas as pd
-#df = pd.DataFrame(data=Data)
-#df.to_csv('out.csv', mode='a', index=False, header=False)
+
+import pandas as pd
+
+for i in range(1,20):
+    #Data[i,0] = i
+    Data[i-1,0] = xs[i-1]
+    Data[i-1,1] = y_state[i-1]
+    Data[i-1,2] = vs[i-1]
+    Data[i-1,3] = thetas[i-1]
+    Data[i-1,4] = uv_solved[i]
+    Data[i-1,5] = delta_solved[i]
+    Data[i-1,6] = Xped1[i]
+    Data[i-1,7] = Yped1[i]
+    Data[i-1,8] = xref
+    Data[i-1,9] = yref
+    Data[i-1,10] = xs[i]
+    Data[i-1,11] = ys[i]
+    Data[i-1,12] = vs[i]
+    Data[i-1,13] = thetas[i]
+
+df = pd.DataFrame(data=Data)
+df.to_csv('out.csv', mode='a', index=False, header=False)
+
 x_state = x_state + list(sol.value(x)) + [list(sol.value(x))[T-1]]
 y_state = y_state + list(sol.value(y)) + [list(sol.value(y))[T-1]]
 
@@ -226,7 +239,7 @@ def animate(i):
       ch1_line.set_data(xh1_circle, yh1_circle)
       ch2_line.set_data(xh2_circle, yh2_circle)
   return p1_line, r_line, c1_line, af1_line, ch1_line, p2_line, c2_line, af2_line, ch2_line
-
+'''
 import matplotlib
 #matplotlib.use('Agg')
 import matplotlib.animation
@@ -241,3 +254,4 @@ plt.title("Open-loop")
 for i in range(20):
     animate(i)
     plt.savefig("fig_%02i.png" % i)
+'''
